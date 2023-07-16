@@ -1,4 +1,4 @@
-## Created an ML project ##
+## Created an ML project for face Recognition ##
 * Used Convolutional Nueral Networks
 * Dataset is self made using OpenCV
 * dataset is processed and rescaled 
