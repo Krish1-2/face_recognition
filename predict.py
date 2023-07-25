@@ -4,8 +4,10 @@ import numpy as np
 import cv2
 from sklearn.preprocessing import LabelEncoder
 import pickle
+import time
 
 loaded_model = tf.keras.models.load_model("face_recognition_model.keras")
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
 
 # Load the label encoder
 with open("label_encoder.pkl", 'rb') as file:
@@ -13,9 +15,8 @@ with open("label_encoder.pkl", 'rb') as file:
 
 def recognize_faces(image_paths):
     for image_path in image_paths:
-        # Load and process the image
         image = cv2.imread(image_path)
-        image = cv2.resize(image, (256, 256))
+        image = cv2.resize(image, (200, 200))
         img = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         img_normalized = cv2.normalize(img, None, 0, 1.0, cv2.NORM_MINMAX, dtype=cv2.CV_32F)
 
@@ -30,26 +31,20 @@ def recognize_faces(image_paths):
 video = cv2.VideoCapture(0)
 count = 0
 image_paths = []
-while count <= 1:
+while count <= 10:
     ret, frame = video.read()
     count += 1
     cv2.imshow('windowsFrame', frame)
     image_path = 'doing/image' + str(count) + '.png'
-    cv2.imwrite(image_path, frame)
+    cv2.imwrite(image_path,frame)
+    img=cv2.imread(image_path)
+    faces_detected = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5)
+    for x,y,w,h in faces_detected:
+        cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 1)
+        #removing background
+        cv2.imwrite(image_path, img[y:y+h, x:x+w])
     image_paths.append(image_path)
+video.release()
 
 recognize_faces(image_paths)
-
-
-        # Perform face recognition by passing the image through the loaded model
-        # features = loaded_model.predict(np.expand_dims(img_normalized, axis=0))
-        # print(features)
-        #  Perform label decoding to obtain the recognized person
-        # recognized_label = label_encoder.inverse_transform(np.argmax(features, axis=1))
-        # print(recognized_label)
-        # if features<=0.5:
-        #     cv2.putText(image, 'ami', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-        # elif features>0.5:
-        #     cv2.putText(image, 'krish', (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 1.0, (0, 255, 0), 2)
-        # cv2.imshow('Face Recognition', image)
-        # cv2.waitKey(0)
+cv2.destroyAllWindows()

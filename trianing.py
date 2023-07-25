@@ -17,30 +17,30 @@ directory = 'dataset'
 label_encoder_path = "label_encoder.pkl"
 tensorboard_callbacks=tf.keras.callbacks.TensorBoard(log_dir='callbacks')
 
+face_cascade = cv2.CascadeClassifier('haarcascade_frontalface_default.xml')
+# eyes_cascade = cv2.CascadeClassifier(cv2.data.haarcascades + 'haarcascade_eye.xml')
+
 for root, dirs, files in os.walk(directory):
     for file in files:
         file_name= os.path.join(root, file)
         img = cv2.imread(file_name)
         img = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+        faces_detected = face_cascade.detectMultiScale(img, scaleFactor=1.1, minNeighbors=5)
+        for x,y,w,h in faces_detected:
+            cv2.rectangle(img, (x, y), (x+w, y+h), (0, 255, 0), 1)
+            #removing background
+            cv2.imwrite(file_name, img[y:y+h, x:x+w])
         img_normalized = img/255
-
-        # #removing background
-        # _, alpha = cv2.threshold(img_normalized, 0, 255, cv2.THRESH_BINARY)
-        # b, g, r = cv2.split(img_normalized)
-        # rgba = [b, g, r, alpha]
-        # img_normalized = cv2.merge(rgba, 4)
-  
-        print("image shape=",img_normalized.shape)
-
-        # image = load_img(os.path.join(root, file), target_size=(480,640))
-        resized_img = cv2.resize(img_normalized, (256, 256))
+        resized_img = cv2.resize(img_normalized, (200, 200))
+        
+        print("image shape=",resized_img.shape)
         image = img_to_array(resized_img)
         train_images.append(image)    
         # Extract the label from the directory name
         label = os.path.basename(root)
         train_labels.append(label)
 
-train_images = np.array(train_images)  # Convert the list to a numpy array
+train_images = np.array(train_images) 
 train_labels = np.array(train_labels) 
 print(train_images.shape,train_labels.shape)
 
@@ -57,23 +57,32 @@ train_images, test_images, train_labels, test_labels = train_test_split(train_im
 
 
 model = Sequential()
-model.add(Conv2D(32, (3, 3), activation='relu', input_shape=(256,256, 1)))
+model.add(Conv2D(32, (5, 5), activation='relu',strides=(1, 1), input_shape=(200,200, 1)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
-model.add(Conv2D(64, (3, 3), activation='relu'))
+model.add(Conv2D(64, (5, 5), activation='relu',strides=(1, 1)))
+model.add(MaxPooling2D(pool_size=(2, 2)))
+model.add(Conv2D(128, (5, 5), activation='relu',strides=(1, 1)))
 model.add(MaxPooling2D(pool_size=(2, 2)))
 
 model.add(Flatten())
-model.add(Dense(128, activation='sigmoid'))
+model.add(Dense(64, activation='relu'))
 model.add(Dense(3, activation='softmax'))
 model.compile(optimizer='adam', loss='categorical_crossentropy', metrics=['accuracy'])
-hist=model.fit(train_images,train_labels, epochs=3,callbacks=[tensorboard_callbacks])
-model.summary()
+hist=model.fit(train_images,train_labels, epochs=12,validation_data=(test_images, test_labels),callbacks=[tensorboard_callbacks])
 model.save('face_recognition_model.keras')
 
+# Plot training and validation accuracy
+plt.plot(hist.history['accuracy'], label='Training Accuracy')
+plt.plot(hist.history['val_accuracy'], label='Validation Accuracy')
+plt.xlabel('Epochs')
+plt.ylabel('Accuracy')
+plt.legend()
+plt.show()
 
-fig=plt.figure()
-plt.plot(hist.history['loss'], color='teal', label='loss')
-plt.plot(hist.history['val_loss'], color='orange', label='val_loss')
-fig.suptitle('Loss', fontsize=20)
-plt.legend(loc="upper left")
+# Plot training and validation loss
+plt.plot(hist.history['loss'], label='Training Loss')
+plt.plot(hist.history['val_loss'], label='Validation Loss')
+plt.xlabel('Epochs')
+plt.ylabel('Loss')
+plt.legend()
 plt.show()
